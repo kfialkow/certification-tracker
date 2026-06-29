@@ -1,0 +1,258 @@
+---
+import { Plus, RotateCcw, Save, Trash2 } from "lucide-astro";
+import AppLayout from "../layouts/AppLayout.astro";
+import StatusBadge from "../components/StatusBadge.astro";
+import { listCertifications, listCertificationTypes } from "../lib/certifications";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const types = await listCertificationTypes(true);
+const certifications = await listCertifications(user);
+
+const statusOptions = ["active", "renewed", "canceled", "removed"];
+---
+
+<AppLayout title="Certification Grid | Certification Tracker" user={user}>
+  <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold text-ink">Certification Grid</h1>
+        <p class="mt-1 text-sm text-slate-600">{user.fullName} · {user.email}</p>
+      </div>
+      {user.role === "admin" && (
+        <a class="btn btn-ghost" href="/admin">Admin</a>
+      )}
+    </div>
+
+    <div data-grid-message class="mb-4 hidden rounded-md border px-4 py-3 text-sm"></div>
+
+    <form data-create-cert class="mb-5 rounded-md border border-line bg-white p-4 shadow-panel">
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label class="field">
+          <span class="label">Full name</span>
+          <input class="control" name="fullName" value={user.fullName} required />
+        </label>
+        <label class="field">
+          <span class="label">Email</span>
+          <input class="control" name="email" type="email" value={user.email} required />
+        </label>
+        <label class="field">
+          <span class="label">Phone</span>
+          <input class="control" name="phone" value={user.phone ?? ""} />
+        </label>
+        <label class="field">
+          <span class="label">Type</span>
+          <select class="control" name="certificationTypeId" required>
+            <option value="">Select</option>
+            {types.map((type) => (
+              <option value={type.id}>{type.name}</option>
+            ))}
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">Issue date</span>
+          <input class="control" name="issueDate" type="date" required />
+        </label>
+        <label class="field">
+          <span class="label">Expire date</span>
+          <input class="control" name="expiresAt" type="date" required />
+        </label>
+        <label class="field">
+          <span class="label">Copy URL</span>
+          <input class="control" name="documentUrl" type="url" placeholder="https://..." />
+        </label>
+        <label class="field">
+          <span class="label">Notes</span>
+          <input class="control" name="notes" maxlength="3000" />
+        </label>
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button class="btn btn-primary" type="submit">
+          <Plus size={18} aria-hidden="true" />
+          Add certification
+        </button>
+      </div>
+    </form>
+
+    <div class="table-wrap">
+      <table class="grid-table">
+        <thead>
+          <tr>
+            <th class="w-44">Full name</th>
+            <th class="w-56">Email</th>
+            <th class="w-36">Phone</th>
+            <th class="w-48">Type</th>
+            <th class="w-36">Issue</th>
+            <th class="w-36">Expire</th>
+            <th class="w-36">Status</th>
+            <th class="w-56">Copy URL</th>
+            <th class="w-56">Notes</th>
+            <th class="w-28">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {certifications.length === 0 && (
+            <tr>
+              <td colspan="10" class="text-center text-slate-500">No certification records.</td>
+            </tr>
+          )}
+          {certifications.map((certification) => (
+            <tr data-cert-row data-id={certification.id}>
+              <td>
+                <input class="control-sm" name="fullName" value={certification.fullName} required />
+              </td>
+              <td>
+                <input class="control-sm" name="email" type="email" value={certification.email} required />
+              </td>
+              <td>
+                <input class="control-sm" name="phone" value={certification.phone ?? ""} />
+              </td>
+              <td>
+                <select class="control-sm" name="certificationTypeId" required>
+                  {types.map((type) => (
+                    <option value={type.id} selected={type.id === certification.certificationTypeId}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td>
+                <input class="control-sm" name="issueDate" type="date" value={certification.issueDate} required />
+              </td>
+              <td>
+                <input class="control-sm" name="expiresAt" type="date" value={certification.expiresAt} required />
+              </td>
+              <td>
+                <div class="grid gap-1">
+                  <StatusBadge status={certification.status} />
+                  <select class="control-sm" name="status">
+                    {statusOptions.map((status) => (
+                      <option value={status} selected={status === certification.status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+              </td>
+              <td>
+                <input class="control-sm" name="documentUrl" type="url" value={certification.documentUrl ?? ""} />
+              </td>
+              <td>
+                <input class="control-sm" name="notes" value={certification.notes ?? ""} maxlength="3000" />
+              </td>
+              <td>
+                <div class="flex gap-2">
+                  <button class="icon-btn" type="button" data-save-cert title="Save" aria-label="Save">
+                    <Save size={17} aria-hidden="true" />
+                  </button>
+                  <button class="icon-btn text-danger hover:bg-red-50" type="button" data-remove-cert title="Remove" aria-label="Remove">
+                    <Trash2 size={17} aria-hidden="true" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-4 flex justify-end">
+      <button class="btn btn-ghost" type="button" data-refresh-grid>
+        <RotateCcw size={18} aria-hidden="true" />
+        Refresh
+      </button>
+    </div>
+  </section>
+
+  <script is:inline>
+    const gridMessage = document.querySelector("[data-grid-message]");
+
+    function showGridMessage(text, ok = true) {
+      if (!gridMessage) return;
+      gridMessage.textContent = text;
+      gridMessage.className = ok
+        ? "mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-success"
+        : "mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger";
+    }
+
+    function valuesFrom(container) {
+      const data = {};
+      container.querySelectorAll("[name]").forEach((field) => {
+        if (field.type === "checkbox") {
+          data[field.name] = field.checked;
+          return;
+        }
+        data[field.name] = field.value;
+      });
+      return data;
+    }
+
+    async function sendJson(url, method, payload) {
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to save.");
+      }
+      return data;
+    }
+
+    document.querySelector("[data-create-cert]")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector("button[type='submit']");
+      button.disabled = true;
+
+      try {
+        await sendJson("/api/certifications", "POST", valuesFrom(form));
+        showGridMessage("Certification added.");
+        window.location.reload();
+      } catch (error) {
+        showGridMessage(error.message, false);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.querySelectorAll("[data-save-cert]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const row = button.closest("[data-cert-row]");
+        button.disabled = true;
+
+        try {
+          await sendJson(`/api/certifications/${row.dataset.id}`, "PATCH", valuesFrom(row));
+          showGridMessage("Certification saved.");
+          window.location.reload();
+        } catch (error) {
+          showGridMessage(error.message, false);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-remove-cert]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const row = button.closest("[data-cert-row]");
+        button.disabled = true;
+
+        try {
+          await sendJson(`/api/certifications/${row.dataset.id}`, "DELETE", {});
+          row.remove();
+          showGridMessage("Certification removed.");
+        } catch (error) {
+          showGridMessage(error.message, false);
+          button.disabled = false;
+        }
+      });
+    });
+
+    document.querySelector("[data-refresh-grid]")?.addEventListener("click", () => {
+      window.location.reload();
+    });
+  </script>
+</AppLayout>

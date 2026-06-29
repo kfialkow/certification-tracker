@@ -1,0 +1,59 @@
+---
+import "../styles/global.css";
+import { BadgeCheck, LogOut, Settings, TableProperties } from "lucide-astro";
+import type { SessionUser } from "../lib/auth";
+
+interface Props {
+  title: string;
+  user?: SessionUser | null;
+}
+
+const { title, user = null } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="min-h-screen">
+      <header class="border-b border-line bg-white">
+        <div class="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <a href={user ? "/dashboard" : "/login"} class="flex min-w-0 items-center gap-3 font-semibold text-ink">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-action text-white">
+              <BadgeCheck size={20} aria-hidden="true" />
+            </span>
+            <span class="truncate">Certification Tracker</span>
+          </a>
+
+          {user && (
+            <nav class="flex items-center gap-2">
+              <a class="btn btn-ghost" href="/dashboard">
+                <TableProperties size={18} aria-hidden="true" />
+                Grid
+              </a>
+              {user.role === "admin" && (
+                <a class="btn btn-ghost" href="/admin">
+                  <Settings size={18} aria-hidden="true" />
+                  Admin
+                </a>
+              )}
+              <form method="post" action="/api/auth/logout">
+                <button class="icon-btn" type="submit" title="Log out" aria-label="Log out">
+                  <LogOut size={18} aria-hidden="true" />
+                </button>
+              </form>
+            </nav>
+          )}
+        </div>
+      </header>
+
+      <main>
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>

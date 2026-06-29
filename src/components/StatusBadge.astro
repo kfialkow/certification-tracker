@@ -1,0 +1,15 @@
+---
+interface Props {
+  status: "active" | "renewed" | "canceled" | "removed";
+}
+
+const { status } = Astro.props;
+const classes = {
+  active: "bg-emerald-50 text-success",
+  renewed: "bg-blue-50 text-action",
+  canceled: "bg-amber-50 text-warn",
+  removed: "bg-red-50 text-danger"
+};
+---
+
+<span class:list={["status-pill", classes[status]]}>{status}</span>

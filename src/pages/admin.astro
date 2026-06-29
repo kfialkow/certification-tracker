@@ -1,0 +1,171 @@
+---
+import { Plus, Save } from "lucide-astro";
+import AppLayout from "../layouts/AppLayout.astro";
+import { getAdminStats, listCertificationTypes } from "../lib/certifications";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (user.role !== "admin") {
+  return Astro.redirect("/dashboard");
+}
+
+const types = await listCertificationTypes(false);
+const stats = await getAdminStats();
+---
+
+<AppLayout title="Admin | Certification Tracker" user={user}>
+  <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mb-5">
+      <h1 class="text-2xl font-semibold text-ink">Admin</h1>
+      <p class="mt-1 text-sm text-slate-600">Certification type maintenance</p>
+    </div>
+
+    <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-md border border-line bg-white p-4 shadow-panel">
+        <div class="text-xs font-semibold uppercase text-slate-600">Users</div>
+        <div class="mt-2 text-2xl font-semibold text-ink">{stats.users}</div>
+      </div>
+      <div class="rounded-md border border-line bg-white p-4 shadow-panel">
+        <div class="text-xs font-semibold uppercase text-slate-600">Certifications</div>
+        <div class="mt-2 text-2xl font-semibold text-ink">{stats.certifications}</div>
+      </div>
+      <div class="rounded-md border border-line bg-white p-4 shadow-panel">
+        <div class="text-xs font-semibold uppercase text-slate-600">Expiring</div>
+        <div class="mt-2 text-2xl font-semibold text-warn">{stats.expiring}</div>
+      </div>
+      <div class="rounded-md border border-line bg-white p-4 shadow-panel">
+        <div class="text-xs font-semibold uppercase text-slate-600">Types</div>
+        <div class="mt-2 text-2xl font-semibold text-ink">{stats.types}</div>
+      </div>
+    </div>
+
+    <div data-admin-message class="mb-4 hidden rounded-md border px-4 py-3 text-sm"></div>
+
+    <form data-create-type class="mb-5 rounded-md border border-line bg-white p-4 shadow-panel">
+      <div class="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto] md:items-end">
+        <label class="field">
+          <span class="label">Type name</span>
+          <input class="control" name="name" required />
+        </label>
+        <label class="field">
+          <span class="label">Description</span>
+          <input class="control" name="description" />
+        </label>
+        <label class="flex h-10 items-center gap-2 text-sm font-semibold text-ink">
+          <input class="h-4 w-4" type="checkbox" name="isActive" checked />
+          Active
+        </label>
+        <button class="btn btn-primary" type="submit">
+          <Plus size={18} aria-hidden="true" />
+          Add type
+        </button>
+      </div>
+    </form>
+
+    <div class="table-wrap">
+      <table class="grid-table">
+        <thead>
+          <tr>
+            <th class="w-64">Name</th>
+            <th>Description</th>
+            <th class="w-28">Active</th>
+            <th class="w-20">Save</th>
+          </tr>
+        </thead>
+        <tbody>
+          {types.map((type) => (
+            <tr data-type-row data-id={type.id}>
+              <td>
+                <input class="control-sm" name="name" value={type.name} required />
+              </td>
+              <td>
+                <input class="control-sm" name="description" value={type.description ?? ""} />
+              </td>
+              <td>
+                <input class="h-4 w-4" type="checkbox" name="isActive" checked={type.isActive} />
+              </td>
+              <td>
+                <button class="icon-btn" type="button" data-save-type title="Save" aria-label="Save">
+                  <Save size={17} aria-hidden="true" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script is:inline>
+    const adminMessage = document.querySelector("[data-admin-message]");
+
+    function showAdminMessage(text, ok = true) {
+      if (!adminMessage) return;
+      adminMessage.textContent = text;
+      adminMessage.className = ok
+        ? "mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-success"
+        : "mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger";
+    }
+
+    function valuesFrom(container) {
+      const data = {};
+      container.querySelectorAll("[name]").forEach((field) => {
+        if (field.type === "checkbox") {
+          data[field.name] = field.checked;
+          return;
+        }
+        data[field.name] = field.value;
+      });
+      return data;
+    }
+
+    async function sendType(url, method, payload) {
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to save type.");
+      }
+      return data;
+    }
+
+    document.querySelector("[data-create-type]")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector("button[type='submit']");
+      button.disabled = true;
+
+      try {
+        await sendType("/api/certification-types", "POST", valuesFrom(form));
+        showAdminMessage("Certification type added.");
+        window.location.reload();
+      } catch (error) {
+        showAdminMessage(error.message, false);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.querySelectorAll("[data-save-type]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const row = button.closest("[data-type-row]");
+        button.disabled = true;
+
+        try {
+          await sendType(`/api/certification-types/${row.dataset.id}`, "PATCH", valuesFrom(row));
+          showAdminMessage("Certification type saved.");
+        } catch (error) {
+          showAdminMessage(error.message, false);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+  </script>
+</AppLayout>
