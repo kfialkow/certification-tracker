@@ -57,6 +57,9 @@ Local runner example:
 npm run notify:run
 ```
 
+`npm run notify:run` calls `${APP_URL}/api/cron/monitor`, so the app must already be running.
+If cron is not on the same server as the app, set `APP_URL` to the deployed HTTPS URL.
+
 ## Deployment Package
 
 This project builds as an Astro Node standalone server. Build it with:
@@ -104,4 +107,16 @@ Schedule the certification monitor with your server cron/task scheduler:
 
 ```bash
 npm run notify:run
+```
+
+Example crontab when the app is running on the same server:
+
+```cron
+0 8 * * * cd /var/www/CERTRACTKER && /usr/bin/npm run notify:run >> cron-notify.log 2>&1
+```
+
+Example crontab that calls the deployed site directly:
+
+```cron
+0 8 * * * curl -fsS -X POST https://your-domain.example/api/cron/monitor -H "Authorization: Bearer YOUR_CRON_SECRET" >> cron-notify.log 2>&1
 ```
