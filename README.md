@@ -47,7 +47,7 @@ The first registered account becomes an admin. Later accounts are standard users
 HTTP cron example:
 
 ```bash
-curl -X POST http://localhost:4321/api/cron/monitor \
+curl -fsS http://localhost:4321/api/cron/monitor \
   -H "Authorization: Bearer replace-with-a-long-random-value"
 ```
 
@@ -118,5 +118,5 @@ Example crontab when the app is running on the same server:
 Example crontab that calls the deployed site directly:
 
 ```cron
-0 8 * * * curl -fsS -X POST https://your-domain.example/api/cron/monitor -H "Authorization: Bearer YOUR_CRON_SECRET" >> cron-notify.log 2>&1
+0 8 * * * curl -fsS https://your-domain.example/api/cron/monitor -H "Authorization: Bearer YOUR_CRON_SECRET" >> cron-notify.log 2>&1
 ```
